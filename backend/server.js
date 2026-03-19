@@ -1,0 +1,59 @@
+// backend/server.js
+require("dotenv").config();
+const express = require("express");
+const mongoose = require("mongoose");
+const path = require("path");
+const cors = require("cors");
+
+const authRoutes = require("./routes/auth");
+const uploadConvertRoutes = require("./routes/uploadConvert");
+const assemblyTranscriptStatusRoutes = require("./routes/assemblyTranscriptStatus");
+const groqTranscriptRoutes = require("./routes/groqTranscript");
+
+const quizGenerateRoutes = require("./routes/quizGenerate");
+const quizFromTranscriptRoutes = require("./routes/quizFromTranscript");
+const streamTranscriptRoutes = require("./routes/streamTranscript");
+const chunkSummaryRoutes = require("./routes/chunkSummary");
+
+const app = express();
+
+// middleware
+app.use(cors());
+app.use(express.json());
+
+// health check
+app.get("/", (req, res) => {
+  res.send("API running");
+});
+
+// quiz routes
+app.use("/api/quiz", quizGenerateRoutes);       // /api/quiz/generate
+app.use("/api/quiz", quizFromTranscriptRoutes); // /api/quiz/from-transcript
+
+// streaming + chunk summary
+app.use("/api/stream-transcript", streamTranscriptRoutes);
+app.use("/api/groq-transcript", groqTranscriptRoutes);
+app.use("/api/chunk-summary", chunkSummaryRoutes);
+
+// auth + core pipeline
+app.use("/api/auth", authRoutes);
+app.use("/api/upload-convert", uploadConvertRoutes);
+app.use("/api/youtube-convert", require("./routes/youtubeConvert"));
+app.use("/api/assembly-transcript", assemblyTranscriptStatusRoutes);
+
+// static MP3 output
+app.use("/output", express.static(path.join(__dirname, "output")));
+
+// (optional) if you serve uploaded originals somewhere
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// MongoDB connection
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.error("MongoDB connection error:", err));
+
+const port = process.env.PORT || 5000;
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});

@@ -1,0 +1,6 @@
+node_modules/
+.env
+output/
+uploads/
+*.mp3
+*.mp4
