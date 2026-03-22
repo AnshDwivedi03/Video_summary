@@ -7,7 +7,16 @@ const axios = require("axios");
 const cloudinary = require("cloudinary").v2;
 const ytdl = require("@distube/ytdl-core");
 
-ffmpeg.setFfmpegPath(ffmpegStatic);
+// ffmpeg-static can return null on some Linux/production environments.
+// Fall back to the system-installed ffmpeg binary in that case.
+const ffmpegPath = ffmpegStatic || "ffmpeg";
+console.log("[youtubeConvert] ffmpeg path:", ffmpegPath);
+ffmpeg.setFfmpegPath(ffmpegPath);
+
+// Ensure output directory exists (Render ephemeral FS)
+const OUTPUT_DIR = path.join(__dirname, "..", "output");
+if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+
 const router = express.Router();
 
 cloudinary.config({
@@ -18,11 +27,8 @@ cloudinary.config({
 
 function convertYoutubeToMp3(youtubeUrl, startTime, duration) {
     return new Promise((resolve, reject) => {
-        const outDir = path.join(__dirname, "..", "output");
-        if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
-
         const videoId = ytdl.getURLVideoID(youtubeUrl) || "video";
-        const outputPath = path.join(outDir, `audio-${Date.now()}-${videoId}.mp3`);
+        const outputPath = path.join(OUTPUT_DIR, `audio-${Date.now()}-${videoId}.mp3`);
 
         const stream = ytdl(youtubeUrl, { filter: "audioonly", quality: "highestaudio" });
 
@@ -56,11 +62,12 @@ async function uploadToCloudinary(localMp3Path) {
 }
 
 async function createAssemblyJob(audioUrl) {
-    const res = await axios.post(
-        "http://localhost:5000/api/assembly-transcript",
-        { audioUrl }
-    );
-    return res.data.id;
+    // Use the AssemblyAI SDK directly instead of a self-HTTP call (localhost
+    // is unreachable in production on Render and similar platforms).
+    const { AssemblyAI } = require("assemblyai");
+    const client = new AssemblyAI({ apiKey: process.env.ASSEMBLYAI_API_KEY });
+    const transcript = await client.transcripts.submit({ audio_url: audioUrl });
+    return transcript.id;
 }
 
 router.post("/", async (req, res) => {

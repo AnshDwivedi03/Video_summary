@@ -5,7 +5,17 @@ const path = require("path");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegStatic = require("ffmpeg-static");
 
-ffmpeg.setFfmpegPath(ffmpegStatic);
+// ffmpeg-static can return null on some Linux/production environments.
+const ffmpegPath = ffmpegStatic || "ffmpeg";
+console.log("[convert] ffmpeg path:", ffmpegPath);
+ffmpeg.setFfmpegPath(ffmpegPath);
+
+// Ensure directories exist at startup
+const TEMP_DIR = path.join(__dirname, "..", "temp");
+const OUTPUT_DIR = path.join(__dirname, "..", "output");
+[TEMP_DIR, OUTPUT_DIR].forEach((d) => {
+  if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+});
 
 const router = express.Router();
 
@@ -17,14 +27,8 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    const tempDir = path.join(__dirname, "..", "temp");
-    const outDir = path.join(__dirname, "..", "output");
-
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
-
-    const inputPath = path.join(tempDir, `input-${Date.now()}.mp4`);
-    const outputPath = path.join(outDir, `audio-${Date.now()}.mp3`);
+    const inputPath = path.join(TEMP_DIR, `input-${Date.now()}.mp4`);
+    const outputPath = path.join(OUTPUT_DIR, `audio-${Date.now()}.mp3`);
 
     // Download video to temp file
 const response = await axios({

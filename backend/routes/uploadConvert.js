@@ -9,8 +9,19 @@ const ffprobeInstaller = require("@ffprobe-installer/ffprobe");
 const axios = require("axios");
 const cloudinary = require("cloudinary").v2;
 
-ffmpeg.setFfmpegPath(ffmpegStatic);
+// ffmpeg-static can return null on some Linux/production environments.
+// Fall back to the system-installed ffmpeg binary in that case.
+const ffmpegPath = ffmpegStatic || "ffmpeg";
+console.log("[uploadConvert] ffmpeg path:", ffmpegPath);
+ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobeInstaller.path);
+
+// Ensure required directories exist at startup (Render ephemeral FS)
+const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
+const OUTPUT_DIR = path.join(__dirname, "..", "output");
+[UPLOADS_DIR, OUTPUT_DIR].forEach((dir) => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
 
 const router = express.Router();
 
@@ -23,14 +34,13 @@ cloudinary.config({
 
 // Multer: save uploaded MP4 locally
 const upload = multer({
-  dest: path.join(__dirname, "..", "uploads"),
+  dest: UPLOADS_DIR,
 });
 
 // MP4 → MP3
 function convertMp4ToMp3(inputPath, startTime, duration) {
   return new Promise((resolve, reject) => {
-    const outDir = path.join(__dirname, "..", "output");
-    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+    const outDir = OUTPUT_DIR;
 
     const outputPath = path.join(
       outDir,
@@ -82,8 +92,7 @@ function getAudioDuration(filePath) {
 // Helper: Split audio into overlapping chunks
 function splitAudio(inputPath, duration, chunkDur = 180, overlap = 15) {
   const chunks = [];
-  const outDir = path.join(__dirname, "..", "output");
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+  const outDir = OUTPUT_DIR;
 
   let start = 0;
   let index = 0;
