@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, History, Award, BookOpen } from "lucide-react";
+import { CheckCircle2, History, Award, BookOpen, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 
 const ScoreTable = ({ records = [] }) => {
