@@ -142,7 +142,11 @@ router.get("/demo", async (req, res) => {
     });
   } catch (err) {
     console.error("Demo login error:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ 
+      message: "Server error", 
+      details: err.message || err.toString(),
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined 
+    });
   }
 });
 

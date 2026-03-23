@@ -125,6 +125,9 @@ function App() {
         setSelectedRole(roleId);
       } catch (err) {
         console.error("Demo login failed:", err);
+        const backendError = err.response?.data?.details || err.response?.data?.message || err.message;
+        alert(`Render Backend Crashed! Details: ${backendError}\n\nThis usually means you missed the JWT_SECRET in your Render dashboard environment variables, or your MongoDB Network Access isn't set to 0.0.0.0/0.`);
+        
         // Fallback to register if demo fails
         setSelectedRole(roleId);
         setAuthScreen("register");
