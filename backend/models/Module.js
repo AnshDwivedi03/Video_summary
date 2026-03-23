@@ -11,6 +11,7 @@ const moduleSchema = new mongoose.Schema({
     summary: { type: Array, default: [] }, // Array of strings
     quiz: { type: Array, default: [] }, // Array of quiz objects
     audioUrl: { type: String, default: "" }, // Cloudinary audio URL
+    isOnboarding: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
 });
 

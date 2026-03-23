@@ -14,12 +14,18 @@ const quizGenerateRoutes = require("./routes/quizGenerate");
 const quizFromTranscriptRoutes = require("./routes/quizFromTranscript");
 const streamTranscriptRoutes = require("./routes/streamTranscript");
 const chunkSummaryRoutes = require("./routes/chunkSummary");
+const recordsRoutes = require("./routes/records");
 
 const app = express();
 
 // middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // health check
 app.get("/", (req, res) => {
@@ -29,6 +35,7 @@ app.get("/", (req, res) => {
 // quiz routes
 app.use("/api/quiz", quizGenerateRoutes);       // /api/quiz/generate
 app.use("/api/quiz", quizFromTranscriptRoutes); // /api/quiz/from-transcript
+app.use("/api/records", recordsRoutes);
 
 // streaming + chunk summary
 app.use("/api/stream-transcript", streamTranscriptRoutes);
@@ -38,7 +45,6 @@ app.use("/api/chunk-summary", chunkSummaryRoutes);
 // auth + core pipeline
 app.use("/api/auth", authRoutes);
 app.use("/api/upload-convert", uploadConvertRoutes);
-app.use("/api/youtube-convert", require("./routes/youtubeConvert"));
 app.use("/api/assembly-transcript", assemblyTranscriptStatusRoutes);
 
 // static MP3 output
