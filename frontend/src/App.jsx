@@ -594,9 +594,7 @@ const ProcessPipeline = ({ target, onComplete }) => {
           const formData = new FormData();
           formData.append("video", target.file);
           formData.append("fullLength", target.fullLength);
-          uploadPromise = api.post("/api/upload-convert", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
+          uploadPromise = api.post("/api/upload-convert", formData);
         }
 
         const uploadRes = await uploadPromise;
