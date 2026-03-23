@@ -2,9 +2,7 @@ import React, { useState } from "react";
 import { User, Award, BookOpen, Clock, ChevronRight, FileText, CheckCircle2, History } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const ProfileSection = ({ user, records = [], modules = [] }) => {
-  const [expandedId, setExpandedId] = useState(null);
-
+const ProfileSection = ({ user, records = [], modules = [], onClose }) => {
   // Combine records with their module data
   const learningHistory = records.map(record => {
     const module = modules.find(m => m._id === record.moduleId || m.id === record.moduleId);
@@ -16,134 +14,122 @@ const ProfileSection = ({ user, records = [], modules = [] }) => {
     };
   });
 
-  const stats = [
-    { label: "Modules Completed", value: learningHistory.length, icon: <BookOpen className="text-blue-500" /> },
-    { label: "Average Score", value: learningHistory.length ? `${Math.round(learningHistory.reduce((acc, r) => acc + (r.score / r.totalQuestions) * 100, 0) / learningHistory.length)}%` : "N/A", icon: <Award className="text-violet-500" /> },
-    { label: "Learning Hours", value: "1.2h", icon: <Clock className="text-cyan-500" /> }
-  ];
+  const modulesCompleted = learningHistory.length;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-12 py-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Profile Header */}
-      <div className="flex flex-col md:flex-row items-center gap-8 bg-bg-secondary p-10 rounded-[3rem] border border-border-primary shadow-xl shadow-blue-500/5">
-        <div className="relative">
-          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 p-1">
-            <div className="w-full h-full rounded-full bg-bg-secondary flex items-center justify-center border-4 border-bg-secondary overflow-hidden">
-               <User size={64} className="text-blue-600" />
-            </div>
-          </div>
-          <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 border-4 border-bg-secondary rounded-full flex items-center justify-center text-white">
-            <CheckCircle2 size={20} />
-          </div>
-        </div>
-        
-        <div className="flex-1 text-center md:text-left space-y-2">
-          <h1 className="text-4xl font-black tracking-tight">{user.name}</h1>
-          <p className="text-text-secondary font-medium text-lg">Growth Associate • OnboardHQ Early Access</p>
-          <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-4">
-            <span className="px-4 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 text-xs font-bold uppercase tracking-widest">Engineering</span>
-            <span className="px-4 py-1.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 text-xs font-bold uppercase tracking-widest">Product</span>
-          </div>
-        </div>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8">
+      {/* Backdrop */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-bg-primary/80 backdrop-blur-xl"
+      />
 
-        <div className="grid grid-cols-3 gap-8 border-l border-border-primary pl-10 hidden lg:grid">
-          {stats.map((stat, i) => (
-            <div key={i} className="text-center space-y-1">
-              <div className="flex justify-center mb-2">{stat.icon}</div>
-              <p className="text-2xl font-black">{stat.value}</p>
-              <p className="text-[10px] text-text-secondary uppercase font-bold tracking-tighter">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Profile Window */}
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative w-full max-w-5xl h-full max-h-[85vh] bg-bg-secondary rounded-[3rem] border border-border-primary shadow-2xl overflow-hidden flex flex-col"
+      >
+        {/* Close Button */}
+        <button 
+          onClick={onClose}
+          className="absolute top-8 right-8 w-10 h-10 rounded-full bg-bg-primary border border-border-primary flex items-center justify-center text-text-secondary hover:text-emerald-500 hover:border-emerald-500/30 transition-all z-10"
+        >
+          <X size={20} />
+        </button>
 
-      {/* History Section */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-3 px-4">
-          <History className="text-blue-600" size={24} />
-          <h2 className="text-2xl font-black tracking-tight">Your Learning Passport</h2>
-        </div>
-
-        <div className="space-y-4">
-          {learningHistory.length === 0 ? (
-            <div className="p-12 rounded-[2rem] border-2 border-dashed border-border-primary text-center space-y-4">
-              <div className="w-16 h-16 bg-bg-secondary rounded-2xl flex items-center justify-center mx-auto text-text-secondary">
-                <BookOpen size={32} />
-              </div>
-              <p className="text-text-secondary font-medium">No learning records found yet. Start your first module!</p>
-            </div>
-          ) : (
-            learningHistory.map((item, index) => (
-              <motion.div 
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="group bg-bg-secondary rounded-[2rem] border border-border-primary hover:border-blue-500/30 transition-all overflow-hidden"
-              >
-                <div 
-                  className="p-6 flex items-center gap-6 cursor-pointer"
-                  onClick={() => setExpandedId(expandedId === index ? null : index)}
-                >
-                  <div className="w-24 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-border-primary">
-                    <img src={item.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-lg truncate group-hover:text-blue-600 transition-colors">{item.moduleTitle}</h3>
-                    <div className="flex items-center gap-4 text-xs text-text-secondary font-medium">
-                      <span className="flex items-center gap-1.5"><Clock size={12} /> {new Date(item.date).toLocaleDateString()}</span>
-                      <span className="flex items-center gap-1.5 px-2 py-0.5 bg-bg-primary text-text-primary rounded-md border border-border-primary">Score: {item.score}/{item.totalQuestions}</span>
-                      <span className={`px-2 py-0.5 rounded-md border font-bold uppercase tracking-tighter text-[10px] ${
-                        item.status === 'Failed' 
-                        ? 'bg-red-500/10 border-red-500/20 text-red-500' 
-                        : item.status === 'Perfect'
-                        ? 'bg-green-500/10 border-green-500/20 text-green-500'
-                        : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
-                      }`}>
-                        {item.status || 'Completed'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className={`transition-transform duration-300 ${expandedId === index ? 'rotate-90' : ''}`}>
-                    <ChevronRight size={20} className="text-text-secondary" />
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {/* Top Section: User & Stats */}
+          <div className="p-10 pb-0 flex flex-col md:flex-row justify-between items-start gap-8">
+            <div className="flex items-center gap-8">
+              <div className="relative">
+                <div className="w-28 h-28 rounded-[2rem] bg-gradient-to-br from-emerald-500 to-teal-600 p-1 shadow-lg shadow-emerald-500/20">
+                  <div className="w-full h-full rounded-[1.8rem] bg-bg-secondary flex items-center justify-center border-2 border-transparent overflow-hidden">
+                    <User size={52} className="text-emerald-500" />
                   </div>
                 </div>
+                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 border-4 border-bg-secondary rounded-full flex items-center justify-center text-white">
+                  <CheckCircle2 size={16} />
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                <h1 className="text-4xl font-black tracking-tighter text-text-primary">{user.name}</h1>
+                <p className="text-emerald-600 font-bold uppercase tracking-[0.2em] text-xs">
+                  {user.role} • Certified Expert
+                </p>
+                <div className="flex gap-2 pt-2">
+                  <div className="px-3 py-1 rounded-lg bg-bg-primary border border-border-primary text-[10px] font-black uppercase text-text-secondary">Level 12</div>
+                  <div className="px-3 py-1 rounded-lg bg-bg-primary border border-border-primary text-[10px] font-black uppercase text-text-secondary">Active Access</div>
+                </div>
+              </div>
+            </div>
 
-                <AnimatePresence>
-                  {expandedId === index && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="border-t border-border-primary bg-bg-primary/30"
-                    >
-                      <div className="p-8 space-y-6">
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-sm font-bold text-blue-600 uppercase tracking-widest">
-                            <FileText size={16} />
-                            Intelligence Summary
-                          </div>
-                          <p className="text-text-secondary leading-relaxed font-medium bg-bg-secondary/50 p-6 rounded-2xl border border-border-primary italic">
-                            "{item.summary}"
-                          </p>
-                        </div>
-                        
-                        <div className="flex justify-end">
-                            <button className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95">
-                                Re-watch Module
-                            </button>
-                        </div>
+            <div className="bg-bg-primary rounded-[2rem] border border-border-primary p-6 px-10 text-center md:text-right space-y-1 min-w-[200px]">
+                <BookOpen className="text-emerald-600 mb-2 md:ml-auto" size={24} />
+                <p className="text-4xl font-black text-text-primary">{modulesCompleted}</p>
+                <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest">Modules Completed</p>
+            </div>
+          </div>
+
+          {/* Track Record Header */}
+          <div className="px-10 mt-12 mb-6">
+            <div className="flex items-center gap-3">
+              <Shield className="text-emerald-600" size={24} />
+              <h2 className="text-2xl font-black tracking-tight">Track Record</h2>
+              <div className="flex-1 h-px bg-border-primary ml-4" />
+            </div>
+          </div>
+
+          {/* Records List */}
+          <div className="px-10 pb-10 space-y-4">
+            {learningHistory.length === 0 ? (
+              <div className="p-12 rounded-[2rem] border-2 border-dashed border-border-primary text-center space-y-4">
+                <div className="w-16 h-16 bg-bg-secondary rounded-2xl flex items-center justify-center mx-auto text-text-secondary/30">
+                  <History size={32} />
+                </div>
+                <p className="text-text-secondary font-bold">No performance history found yet.</p>
+              </div>
+            ) : (
+              learningHistory.map((item, index) => {
+                const accuracy = Math.round((item.score / item.totalQuestions) * 100);
+                return (
+                  <motion.div 
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="flex items-center gap-6 p-5 bg-bg-primary/50 hover:bg-bg-primary rounded-2xl border border-transparent hover:border-border-primary transition-all group"
+                  >
+                    <div className="w-16 h-12 bg-bg-secondary rounded-xl overflow-hidden shrink-0 border border-border-primary">
+                      <img src={item.thumbnail} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-black text-sm truncate">{item.moduleTitle}</h4>
+                      <div className="flex items-center gap-3 text-[10px] font-bold text-text-secondary">
+                        <span className="flex items-center gap-1"><Clock size={10} /> {new Date(item.date).toLocaleDateString()}</span>
+                        <span className="w-1 h-1 rounded-full bg-border-primary" />
+                        <span className={`uppercase ${accuracy >= 80 ? 'text-emerald-600' : ''}`}>{item.status || 'Verified'}</span>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ))
-          )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-lg font-black">{item.score}/{item.totalQuestions}</div>
+                      <div className="w-16 h-1 bg-border-primary rounded-full mt-1">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${accuracy}%` }} />
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

@@ -7,7 +7,6 @@ const cors = require("cors");
 
 const authRoutes = require("./routes/auth");
 const uploadConvertRoutes = require("./routes/uploadConvert");
-const assemblyTranscriptStatusRoutes = require("./routes/assemblyTranscriptStatus");
 const groqTranscriptRoutes = require("./routes/groqTranscript");
 
 const quizGenerateRoutes = require("./routes/quizGenerate");
@@ -45,7 +44,6 @@ app.use("/api/chunk-summary", chunkSummaryRoutes);
 // auth + core pipeline
 app.use("/api/auth", authRoutes);
 app.use("/api/upload-convert", uploadConvertRoutes);
-app.use("/api/assembly-transcript", assemblyTranscriptStatusRoutes);
 
 // static MP3 output
 app.use("/output", express.static(path.join(__dirname, "output")));
@@ -59,7 +57,9 @@ mongoose
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
+
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+

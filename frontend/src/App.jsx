@@ -43,6 +43,8 @@ function App() {
   const [selectedModule, setSelectedModule] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showHome, setShowHome] = useState(false);
+  const [showAccountPopover, setShowAccountPopover] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const { isDarkMode } = useTheme();
 
@@ -196,11 +198,9 @@ function App() {
         <RoleSelector onSelectRole={handleRoleSelect} />
       </div>
     );
-  }
-
-  // Logged in — main dashboard
+  }   // Logged in — main dashboard
   return (
-    <div className={`min-h-screen bg-bg-primary text-text-primary flex flex-col transition-colors duration-300`}>
+    <div className="min-h-screen bg-bg-primary text-text-primary flex flex-col transition-colors duration-300">
       <Navbar 
         user={user} 
         searchQuery={searchQuery} 
@@ -209,72 +209,152 @@ function App() {
         onHomeClick={() => setShowHome(true)}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      {/* Mobile Top-Bar */}
+      <div className="lg:hidden h-14 bg-bg-secondary border-b border-border-primary flex items-center justify-between px-4 sticky top-0 z-40">
+        <div className="flex items-center gap-2" onClick={() => setShowHome(true)}>
+          <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+            <Zap size={16} fill="currentColor" />
+          </div>
+          <span className="font-black tracking-tighter text-base">OnboardHQ</span>
+        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className="p-1.5 text-text-secondary hover:text-text-primary transition-colors bg-bg-primary rounded-xl border border-border-primary"
+        >
+          <Menu size={20} />
+        </button>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar Backdrop (Mobile) */}
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSidebarOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 lg:hidden"
+            />
+          )}
+        </AnimatePresence>
+
         {/* Sidebar */}
-        <aside className="w-72 hidden lg:flex flex-col border-r border-border-primary bg-bg-secondary p-6 space-y-8">
-          <div className="space-y-2">
-            <p className="px-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">Growth Center</p>
-            <SidebarItem 
-              icon={<LayoutDashboard size={20} />} 
-              label="Welcome Hub" 
-              active={activeTab === "dashboard"} 
-              onClick={() => { setActiveTab("dashboard"); setSelectedModule(null); }} 
-            />
-            <SidebarItem 
-              icon={<GraduationCap size={20} />} 
-              label="Growth Path" 
-              active={activeTab === "learning"} 
-              onClick={() => { setActiveTab("learning"); setSelectedModule(null); }} 
-            />
-            <SidebarItem 
-              icon={<Briefcase size={20} />} 
-              label="Essentials" 
-              active={activeTab === "onboarding"} 
-              onClick={() => { setActiveTab("onboarding"); setSelectedModule(null); }} 
-            />
-          </div>
+        <AnimatePresence mode="wait">
+          {(isSidebarOpen || window.innerWidth >= 1024) && (
+            <motion.aside 
+              initial={window.innerWidth < 1024 ? { x: -300 } : false}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              className={`
+                fixed inset-y-0 left-0 w-72 bg-bg-secondary p-6 border-r border-border-primary z-50 flex flex-col
+                lg:relative lg:translate-x-0 lg:flex
+                ${isSidebarOpen ? 'flex' : 'hidden lg:flex'}
+              `}
+            >
+              <div className="flex lg:hidden items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white">
+                    <Zap size={18} fill="currentColor" />
+                  </div>
+                  <span className="font-black text-xl text-text-primary tracking-tight">OnboardMenu</span>
+                </div>
+                <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-bg-primary rounded-lg">
+                  <X size={20} />
+                </button>
+              </div>
 
-          <div className="space-y-2">
-            <p className="px-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">Personal</p>
-            <SidebarItem 
-              icon={<User size={20} />} 
-              label="My Profile" 
-              active={activeTab === "profile"} 
-              onClick={() => { setActiveTab("profile"); setSelectedModule(null); }} 
-            />
-          </div>
+              {/* Sidebar Content */}
+              <div className="space-y-6 flex-1">
+                <div className="space-y-2">
+                  <p className="px-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">Growth Center</p>
+                  <SidebarItem 
+                    icon={<LayoutDashboard size={20} />} 
+                    label="Welcome Hub" 
+                    active={activeTab === "dashboard"} 
+                    onClick={() => { setActiveTab("dashboard"); setSelectedModule(null); setShowHome(false); setIsSidebarOpen(false); }} 
+                  />
+                  <SidebarItem 
+                    icon={<GraduationCap size={20} />} 
+                    label="Growth Path" 
+                    active={activeTab === "learning"} 
+                    onClick={() => { setActiveTab("learning"); setSelectedModule(null); setShowHome(false); setIsSidebarOpen(false); }} 
+                  />
+                  <SidebarItem 
+                    icon={<Briefcase size={20} />} 
+                    label="Essentials" 
+                    active={activeTab === "onboarding"} 
+                    onClick={() => { setActiveTab("onboarding"); setSelectedModule(null); setShowHome(false); setIsSidebarOpen(false); }} 
+                  />
+                </div>
 
-          <div className="pt-8 space-y-2 border-t border-border-primary">
-            <p className="px-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">Account</p>
-            <SidebarItem 
-              icon={<Settings size={20} />} 
-              label="Settings" 
-              active={activeTab === "settings"}
-              onClick={() => { setActiveTab("settings"); setSelectedModule(null); }}
-            />
-            <SidebarItem 
-              icon={<LogOut size={20} />} 
-              label="Logout" 
-              onClick={handleLogout}
-            />
-          </div>
+                <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
+                   <div className="flex justify-between items-center mb-1.5">
+                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Knowledge Index</span>
+                     <span className="text-[10px] font-bold text-text-secondary">82%</span>
+                   </div>
+                   <div className="h-1.5 w-full bg-bg-primary rounded-full overflow-hidden">
+                     <div className="h-full w-[82%] bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full" />
+                   </div>
+                   <p className="mt-3 text-[10px] text-text-secondary leading-tight">
+                     Your retention rate improved by 12% today!
+                   </p>
+                </div>
+              </div>
 
-          <div className="mt-auto p-5 rounded-3xl bg-gradient-to-br from-blue-600/10 to-violet-600/10 border border-blue-500/20">
-             <div className="flex justify-between items-center mb-2">
-               <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Knowledge Index</span>
-               <span className="text-[10px] font-bold text-text-secondary">82%</span>
-             </div>
-             <div className="h-1.5 w-full bg-bg-primary rounded-full overflow-hidden">
-               <div className="h-full w-[82%] bg-gradient-to-r from-blue-500 to-violet-500 rounded-full" />
-             </div>
-             <p className="mt-3 text-[10px] text-text-secondary leading-tight">
-               Your retention rate has improved by 12% this week!
-             </p>
-          </div>
-        </aside>
+              {/* Bottom Account Section */}
+              <div className="pt-6 relative border-t border-border-primary">
+                <AnimatePresence>
+                  {showAccountPopover && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute bottom-full left-0 w-full mb-4 bg-bg-secondary border border-border-primary rounded-[2rem] shadow-2xl p-4 space-y-2 z-50"
+                    >
+                      <button 
+                        onClick={() => { setActiveTab("profile"); setSelectedModule(null); setShowAccountPopover(false); setIsSidebarOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-bg-primary transition-colors text-sm font-bold"
+                      >
+                        <User size={18} className="text-emerald-500" /> My Profile
+                      </button>
+                      <button 
+                        onClick={() => { setActiveTab("settings"); setSelectedModule(null); setShowAccountPopover(false); setIsSidebarOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-bg-primary transition-colors text-sm font-bold"
+                      >
+                        <Settings size={18} className="text-emerald-500" /> Settings
+                      </button>
+                      <hr className="border-border-primary my-2" />
+                      <button 
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 text-red-500 transition-colors text-sm font-bold"
+                      >
+                        <LogOut size={18} /> Logout
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <button
+                  onClick={() => setShowAccountPopover(!showAccountPopover)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all ${showAccountPopover ? 'bg-bg-primary border-emerald-500/30' : 'bg-transparent border-transparent hover:bg-bg-primary'}`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black shadow-lg shadow-emerald-500/20">
+                    {user?.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="text-left flex-1 min-w-0">
+                    <p className="text-sm font-black truncate">{user?.name}</p>
+                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{user?.role}</p>
+                  </div>
+                  <ChevronRight size={16} className={`text-text-secondary transition-transform ${showAccountPopover ? 'rotate-90' : ''}`} />
+                </button>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-8 relative">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 relative">
           <AnimatePresence mode="wait">
             {selectedModule ? (
                 <motion.div
@@ -313,13 +393,13 @@ function App() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="max-w-7xl mx-auto space-y-12"
+                className="max-w-7xl mx-auto space-y-4"
               >
                 {activeTab === "dashboard" && (
                   <>
-                    <div className="space-y-2 border-l-4 border-blue-600 pl-6 py-2">
-                        <h2 className="text-3xl font-black tracking-tight">Your Career Growth</h2>
-                        <p className="text-text-secondary font-medium">Personalized training for your role as an <span className="text-blue-600 capitalize font-bold">{selectedRole}</span>.</p>
+                    <div className="space-y-1 border-l-4 border-emerald-500 pl-4 py-1">
+                        <h2 className="text-2xl font-black tracking-tight text-text-primary uppercase">Your Career Growth</h2>
+                        <p className="text-text-secondary text-sm font-medium">Personalized training for your role as an <span className="text-emerald-500 font-bold uppercase tracking-widest">{user?.role || selectedRole || 'Professional'}</span>.</p>
                     </div>
                     <ModernVideoInput onProcessStart={handleProcessStart} />
                     {processingTarget && (
@@ -359,6 +439,7 @@ function App() {
                     user={user}
                     records={records}
                     modules={modules}
+                    onClose={() => setActiveTab("dashboard")}
                   />
                 )}
 
@@ -380,7 +461,7 @@ const SettingsPanel = ({ user }) => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      <div className="space-y-2 border-l-4 border-blue-600 pl-6 py-2">
+      <div className="space-y-2 border-l-4 border-emerald-500 pl-6 py-2">
         <h2 className="text-3xl font-black tracking-tight">Settings</h2>
         <p className="text-text-secondary font-medium">Manage your account and preferences.</p>
       </div>
@@ -388,7 +469,7 @@ const SettingsPanel = ({ user }) => {
       {/* Account Info */}
       <div className="bg-bg-secondary rounded-[2.5rem] border border-border-primary p-8 space-y-6 shadow-sm">
         <h3 className="text-xl font-bold flex items-center gap-3">
-          <Shield size={20} className="text-blue-600" /> Account Information
+          <Shield size={20} className="text-emerald-500" /> Account Information
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-1">
@@ -449,7 +530,7 @@ const DashboardGrid = ({ title = "Your Learning Modules", modules, onSelectModul
             <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
             <button className="text-sm font-bold text-blue-600 hover:text-blue-700">View All</button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {modules.length === 0 ? (
                 <div className="col-span-full py-20 text-center space-y-4 bg-bg-secondary/50 rounded-3xl border border-dashed border-border-primary">
                     <div className="w-16 h-16 bg-bg-primary rounded-full flex items-center justify-center mx-auto text-text-secondary/50">
@@ -466,10 +547,10 @@ const DashboardGrid = ({ title = "Your Learning Modules", modules, onSelectModul
                         key={mod.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.1 }}
+                        transition={{ delay: idx * 0.05, duration: 0.2 }}
                         whileHover={{ y: -5 }}
                         onClick={() => onSelectModule(mod)}
-                        className="bg-bg-secondary rounded-3xl overflow-hidden border border-border-primary hover:shadow-2xl transition-all cursor-pointer group"
+                        className="bg-bg-secondary rounded-2xl overflow-hidden border border-border-primary hover:shadow-xl transition-all cursor-pointer group"
                     >
                         <div className="aspect-video relative overflow-hidden bg-bg-primary">
                             <img src={mod.thumb} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
@@ -478,7 +559,7 @@ const DashboardGrid = ({ title = "Your Learning Modules", modules, onSelectModul
                                 {mod.duration}
                             </div>
                         </div>
-                        <div className="p-6 space-y-4">
+                        <div className="p-4 space-y-3">
                             <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{mod.department}</span>
                             <h4 className="font-bold text-text-primary leading-tight group-hover:text-blue-600 transition-colors">{mod.title}</h4>
                             <div className="flex items-center gap-3 pt-2">
@@ -662,29 +743,8 @@ const ActiveModuleView = ({ module, onBack, onQuizComplete }) => {
   const [timeLeft, setTimeLeft] = useState(30);
   const [isQuizActive, setIsQuizActive] = useState(false);
 
-  useEffect(() => {
-    let timer;
-    if (activeTab === 'quiz' && !quizSubmitted && isQuizActive && timeLeft > 0) {
-      timer = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && !quizSubmitted) {
-      handleNextQuestion();
-    }
-    return () => clearInterval(timer);
-  }, [activeTab, timeLeft, quizSubmitted, isQuizActive]);
-
-  const handleStartQuiz = () => {
-    setIsQuizActive(true);
-    setTimeLeft(30);
-  };
-
-  const handleAnswer = (optionIdx) => {
-    const nextAnswers = { ...quizAnswers, [currentQuestionIndex]: optionIdx };
-    setQuizAnswers(nextAnswers);
-    setTimeout(() => {
-      handleNextQuestion(nextAnswers);
-    }, 300);
+  const calculateScore = (answers = quizAnswers) => {
+    return module.quiz.reduce((acc, q, idx) => acc + (answers[idx] === q.answer ? 1 : 0), 0);
   };
 
   const handleNextQuestion = (latestAnswers = quizAnswers) => {
@@ -698,9 +758,30 @@ const ActiveModuleView = ({ module, onBack, onQuizComplete }) => {
     }
   };
 
-  const calculateScore = (answers = quizAnswers) => {
-    return module.quiz.reduce((acc, q, idx) => acc + (answers[idx] === q.answer ? 1 : 0), 0);
+  const handleAnswer = (optionIdx) => {
+    const nextAnswers = { ...quizAnswers, [currentQuestionIndex]: optionIdx };
+    setQuizAnswers(nextAnswers);
+    setTimeout(() => {
+      handleNextQuestion(nextAnswers);
+    }, 300);
   };
+
+  const handleStartQuiz = () => {
+    setIsQuizActive(true);
+    setTimeLeft(30);
+  };
+
+  useEffect(() => {
+    let timer;
+    if (activeTab === 'quiz' && !quizSubmitted && isQuizActive && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && !quizSubmitted) {
+      handleNextQuestion();
+    }
+    return () => clearInterval(timer);
+  }, [activeTab, timeLeft, quizSubmitted, isQuizActive]);
 
   const score = calculateScore();
   const passThreshold = 0.6;

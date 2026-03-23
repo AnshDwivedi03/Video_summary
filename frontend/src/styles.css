@@ -14,6 +14,7 @@
   --text-primary: #0f172a;
   --text-secondary: #64748b;
   --border-primary: #e2e8f0;
+  --accent: #10b981;
 }
 
 .dark {
@@ -22,6 +23,7 @@
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --border-primary: #334155;
+  --accent: #10b981;
 }
 
 body {

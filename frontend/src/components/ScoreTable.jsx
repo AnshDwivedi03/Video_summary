@@ -24,93 +24,98 @@ const ScoreTable = ({ records = [] }) => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 flex items-center justify-center">
-            <History size={20} />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center shadow-inner">
+              <History size={24} />
+          </div>
+          <div>
+              <h3 className="text-2xl font-black tracking-tight">Intelligence Ledger</h3>
+              <p className="text-sm text-text-secondary font-medium">Historical performance and assessment records.</p>
+          </div>
         </div>
-        <div>
-            <h3 className="text-xl font-bold">Quiz History</h3>
-            <p className="text-sm text-text-secondary">Track your learning progress and performance.</p>
+        <div className="hidden sm:flex items-center gap-8">
+            <div className="text-center">
+                <div className="text-2xl font-black text-emerald-600">{displayRecords.length}</div>
+                <div className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Sessions</div>
+            </div>
+            <div className="w-px h-8 bg-border-primary" />
+            <div className="text-center">
+                <div className="text-2xl font-black text-emerald-600">
+                    {Math.round(displayRecords.reduce((acc, r) => acc + (r.score/r.totalQuestions), 0) / (displayRecords.length || 1) * 100)}%
+                </div>
+                <div className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Avg accuracy</div>
+            </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="p-4 rounded-2xl bg-bg-secondary border border-border-primary shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center">
-                <BookOpen size={24} />
-            </div>
-            <div>
-                <div className="text-2xl font-bold">{displayRecords.length}</div>
-                <div className="text-xs text-text-secondary font-medium uppercase tracking-wider">Quizzes Taken</div>
-            </div>
-        </div>
-        <div className="p-4 rounded-2xl bg-bg-secondary border border-border-primary shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 flex items-center justify-center">
+      <div className="space-y-3">
+        {displayRecords.map((record, idx) => {
+          const accuracy = Math.round((record.score / record.totalQuestions) * 100);
+          const isPerfect = record.score === record.totalQuestions;
+          
+          return (
+            <motion.div 
+              key={record.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              className="group relative bg-bg-secondary rounded-[2rem] border border-border-primary p-4 hover:border-emerald-500/30 hover:shadow-lg transition-all flex flex-col md:flex-row md:items-center gap-4"
+            >
+              <div className="w-12 h-12 rounded-xl bg-bg-primary flex items-center justify-center text-emerald-500 shrink-0 group-hover:scale-110 transition-transform">
                 <Award size={24} />
-            </div>
-            <div>
-                <div className="text-2xl font-bold">{displayRecords.filter(r => r.score === r.totalQuestions).length}</div>
-                <div className="text-xs text-text-secondary font-medium uppercase tracking-wider">Perfect Scores</div>
-            </div>
-        </div>
-      </div>
+              </div>
 
-      <div className="bg-bg-secondary rounded-2xl border border-border-primary overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-bg-primary/50 text-text-secondary">
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider border-b border-border-primary">Video Title</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider border-b border-border-primary">Score</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider border-b border-border-primary">Accuracy</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider border-b border-border-primary">Date</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider border-b border-border-primary text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-primary">
-              {displayRecords.map((record, idx) => (
-                <motion.tr 
-                  key={record.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="hover:bg-bg-primary/30 transition-colors"
-                >
-                  <td className="px-6 py-4 font-semibold text-sm">{record.videoTitle}</td>
-                  <td className="px-6 py-4">
-                    <span className="font-bold text-blue-600">{record.score}</span>
-                    <span className="text-text-secondary"> / {record.totalQuestions}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 w-24 bg-bg-primary rounded-full overflow-hidden">
-                            <div 
-                                className={`h-full rounded-full ${record.score / record.totalQuestions > 0.8 ? 'bg-green-500' : 'bg-blue-500'}`} 
-                                style={{ width: `${(record.score / record.totalQuestions) * 100}%` }} 
+              <div className="flex-1 min-w-0">
+                <h4 className="text-lg font-black tracking-tight text-text-primary group-hover:text-emerald-600 transition-colors truncate">
+                  {record.videoTitle}
+                </h4>
+                <div className="flex items-center gap-3 mt-1">
+                    <span className="text-xs font-bold text-text-secondary flex items-center gap-1.5">
+                        <Clock size={12} /> {record.date}
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-border-primary" />
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${isPerfect ? 'text-emerald-500' : 'text-text-secondary'}`}>
+                        {record.status || (accuracy >= 80 ? 'Elite' : 'Standard')}
+                    </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6">
+                <div className="text-right">
+                    <div className="flex items-baseline gap-1 justify-end">
+                        <span className="text-2xl font-black text-text-primary">{record.score}</span>
+                        <span className="text-sm font-bold text-text-secondary">/ {record.totalQuestions}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                        <div className="w-24 h-1.5 bg-bg-primary rounded-full overflow-hidden">
+                            <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${accuracy}%` }}
+                                className={`h-full rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]`}
                             />
                         </div>
-                        <span className="text-xs font-bold">{Math.round((record.score / record.totalQuestions) * 100)}%</span>
+                        <span className="text-xs font-black text-emerald-600">{accuracy}%</span>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-text-secondary whitespace-nowrap">{record.date}</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        record.status === 'Perfect' 
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                        : record.status === 'Failed'
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                    }`}>
-                      {record.status === 'Perfect' && <CheckCircle2 size={10} />}
-                      {record.status || 'Completed'}
-                    </span>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                </div>
+                
+                <div className={`hidden sm:flex w-10 h-10 rounded-full items-center justify-center ${isPerfect ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-bg-primary text-text-secondary'}`}>
+                    {isPerfect ? <CheckCircle2 size={20} /> : <div className="w-2 h-2 rounded-full bg-current" />}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+
+        {displayRecords.length === 0 && (
+            <div className="py-20 text-center space-y-4 bg-bg-secondary/50 rounded-[3rem] border border-dashed border-border-primary">
+                <div className="w-16 h-16 bg-bg-primary rounded-full flex items-center justify-center mx-auto text-text-secondary/30">
+                    <History size={32} />
+                </div>
+                <p className="text-text-secondary font-bold">No records found in the intelligence ledger.</p>
+            </div>
+        )}
       </div>
     </div>
   );

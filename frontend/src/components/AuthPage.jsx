@@ -45,7 +45,7 @@ const AuthPage = ({ mode = "login", selectedRole = null, onAuthSuccess, onBack }
     const result = schema.safeParse(form);
     if (!result.success) {
       const fieldErrors = {};
-      result.error.errors.forEach((e) => {
+      (result.error.errors || result.error.issues || []).forEach((e) => {
         fieldErrors[e.path[0]] = e.message;
       });
       setErrors(fieldErrors);
@@ -83,23 +83,23 @@ const AuthPage = ({ mode = "login", selectedRole = null, onAuthSuccess, onBack }
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-[calc(100vh-3.5rem)] lg:min-h-[calc(100vh-5rem)] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
       {/* Background Effects */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-blue-600/5 blur-[120px]" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full bg-violet-600/5 blur-[120px]" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-emerald-600/5 blur-[120px]" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full bg-teal-600/5 blur-[120px]" />
 
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
         className="w-full max-w-md relative z-10"
       >
         {/* Card */}
-        <div className="bg-bg-secondary/80 backdrop-blur-2xl rounded-[3rem] border border-border-primary shadow-2xl shadow-blue-500/5 overflow-hidden">
+        <div className="bg-bg-secondary/80 backdrop-blur-2xl rounded-3xl sm:rounded-[3rem] border border-border-primary shadow-2xl shadow-emerald-500/5 overflow-hidden">
           {/* Header */}
-          <div className="p-10 pb-0 text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20">
-              {isRegister ? <Sparkles size={28} className="text-white" /> : <Shield size={28} className="text-white" />}
+          <div className="p-6 pb-0 text-center space-y-3">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/10">
+              {isRegister ? <Sparkles size={24} className="text-white sm:w-7 sm:h-7" /> : <Shield size={24} className="text-white sm:w-7 sm:h-7" />}
             </div>
             <div>
               <h2 className="text-3xl font-black tracking-tight">
@@ -107,14 +107,14 @@ const AuthPage = ({ mode = "login", selectedRole = null, onAuthSuccess, onBack }
               </h2>
               <p className="text-text-secondary font-medium mt-2">
                 {isRegister
-                  ? <>Joining as <span className="text-blue-600 font-bold">{ROLE_LABELS[selectedRole]}</span></>
+                  ? <>Joining as <span className="text-emerald-600 font-bold">{ROLE_LABELS[selectedRole]}</span></>
                   : "Sign in to continue (New account required after update)"}
               </p>
             </div>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-10 space-y-5">
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {serverError && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -138,7 +138,7 @@ const AuthPage = ({ mode = "login", selectedRole = null, onAuthSuccess, onBack }
                     placeholder="John Doe"
                     value={form.name}
                     onChange={handleChange}
-                    className={`w-full pl-12 pr-4 py-4 bg-bg-primary border ${errors.name ? "border-red-500" : "border-border-primary"} rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all`}
+                    className={`w-full pl-12 pr-4 py-3 bg-bg-primary border ${errors.name ? "border-red-500" : "border-border-primary"} rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all`}
                   />
                 </div>
                 {errors.name && <p className="text-red-500 text-xs font-bold pl-1">{errors.name}</p>}
@@ -156,7 +156,7 @@ const AuthPage = ({ mode = "login", selectedRole = null, onAuthSuccess, onBack }
                   placeholder="you@company.com"
                   value={form.email}
                   onChange={handleChange}
-                  className={`w-full pl-12 pr-4 py-4 bg-bg-primary border ${errors.email ? "border-red-500" : "border-border-primary"} rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all`}
+                  className={`w-full pl-12 pr-4 py-4 bg-bg-primary border ${errors.email ? "border-red-500" : "border-border-primary"} rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all`}
                 />
               </div>
               {errors.email && <p className="text-red-500 text-xs font-bold pl-1">{errors.email}</p>}
@@ -173,7 +173,7 @@ const AuthPage = ({ mode = "login", selectedRole = null, onAuthSuccess, onBack }
                   placeholder={isRegister ? "Min 6 characters" : "Enter password"}
                   value={form.password}
                   onChange={handleChange}
-                  className={`w-full pl-12 pr-12 py-4 bg-bg-primary border ${errors.password ? "border-red-500" : "border-border-primary"} rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all`}
+                  className={`w-full pl-12 pr-12 py-4 bg-bg-primary border ${errors.password ? "border-red-500" : "border-border-primary"} rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all`}
                 />
                 <button
                   type="button"
@@ -190,7 +190,7 @@ const AuthPage = ({ mode = "login", selectedRole = null, onAuthSuccess, onBack }
               type="submit"
               id="auth-submit"
               disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-blue-600 to-violet-600 text-white font-black rounded-2xl shadow-xl shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-sm uppercase tracking-wider"
+              className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-xl shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:scale-[1.01] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-xs uppercase tracking-wider"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -204,13 +204,13 @@ const AuthPage = ({ mode = "login", selectedRole = null, onAuthSuccess, onBack }
           </form>
 
           {/* Footer */}
-          <div className="px-10 pb-8 text-center">
+          <div className="px-10 pb-8 text-center flex justify-center">
             {onBack && (
               <button
                 onClick={onBack}
-                className="text-sm text-text-secondary hover:text-blue-600 font-bold transition-colors"
+                className="text-sm text-text-secondary hover:text-emerald-600 font-bold transition-colors flex items-center gap-2"
               >
-                ← Back to Position Selection
+                <ArrowRight size={16} className="rotate-180" /> Back to Position Selection
               </button>
             )}
           </div>
