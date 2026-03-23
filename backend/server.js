@@ -18,10 +18,23 @@ const recordsRoutes = require("./routes/records");
 const app = express();
 
 // middleware
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://video-summary-six.vercel.app",
+  "https://video-summary-t6dc.onrender.com"
+];
+
 app.use(cors({
-  origin: "*",
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || origin.includes("vercel.app")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
 }));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));

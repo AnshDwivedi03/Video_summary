@@ -135,6 +135,7 @@ async function uploadToCloudinary(localMp3Path) {
 
 // POST /api/upload-convert
 router.post("/", upload.single("video"), async (req, res) => {
+  console.log("[uploadConvert] Incoming request from origin:", req.headers.origin);
   if (!req.file) {
     return res.status(400).json({ message: "No video file uploaded" });
   }
