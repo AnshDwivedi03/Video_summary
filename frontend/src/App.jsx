@@ -442,7 +442,6 @@ function App() {
                     user={user}
                     records={records}
                     modules={modules}
-                    onClose={() => setActiveTab("dashboard")}
                   />
                 )}
 
@@ -736,6 +735,173 @@ const ProcessPipeline = ({ target, onComplete }) => {
   );
 };
 
+// --- Premium Video Player Component ---
+const VideoPlayer = ({ src, poster }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [showControls, setShowControls] = useState(true);
+  const videoRef = useRef(null);
+  const controlsTimeout = useRef(null);
+
+  const togglePlay = () => {
+    if (videoRef.current.paused) {
+      videoRef.current.play();
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    const current = videoRef.current.currentTime;
+    const total = videoRef.current.duration;
+    setProgress((current / total) * 100);
+  };
+
+  const handleLoadedMetadata = () => {
+    setDuration(videoRef.current.duration);
+  };
+
+  const handleProgressChange = (e) => {
+    const newProgress = parseFloat(e.target.value);
+    const newTime = (newProgress / 100) * videoRef.current.duration;
+    videoRef.current.currentTime = newTime;
+    setProgress(newProgress);
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+    controlsTimeout.current = setTimeout(() => {
+      if (isPlaying) setShowControls(false);
+    }, 3000);
+  };
+
+  // Determine if it's likely an audio file
+  const isAudio = src?.endsWith('.mp3') || src?.includes('audio');
+
+  return (
+    <div 
+      className="relative group w-full h-full bg-slate-950 rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => isPlaying && setShowControls(false)}
+    >
+      {isAudio ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center space-y-8 bg-gradient-to-br from-slate-900 via-blue-900/20 to-slate-900">
+          <div className="relative">
+            <div className="absolute inset-0 bg-blue-500/20 blur-[60px] animate-pulse rounded-full" />
+            <div className="relative w-32 h-32 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center">
+              <div className="flex gap-1.5 items-end h-12">
+                {[0.4, 0.7, 1.0, 0.6, 0.8, 0.5, 0.9].map((h, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{ height: isPlaying ? [12, 48 * h, 12] : 12 }}
+                    transition={{ repeat: Infinity, duration: 1 + i * 0.1, ease: "easeInOut" }}
+                    className="w-1.5 bg-blue-500 rounded-full"
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <p className="text-blue-400 font-bold tracking-[0.2em] uppercase text-[10px] animate-pulse">Intelligence Stream - Audio Interface</p>
+        </div>
+      ) : null}
+
+      <video
+        ref={videoRef}
+        src={src}
+        poster={poster}
+        className={`w-full h-full object-cover transition-opacity duration-1000 ${isAudio ? 'opacity-0' : 'opacity-100'}`}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onClick={togglePlay}
+        playsInline
+      />
+
+      <AnimatePresence>
+        {showControls && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute inset-x-4 bottom-4 z-20 flex flex-col gap-3 p-4 bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-[1.5rem] shadow-2xl"
+          >
+            {/* Progress Bar */}
+            <div className="relative h-1.5 w-full bg-white/10 rounded-full overflow-hidden group/progress cursor-pointer">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={progress}
+                onChange={handleProgressChange}
+                className="absolute inset-0 w-full opacity-0 z-30 cursor-pointer"
+              />
+              <div 
+                className="absolute h-full bg-gradient-to-r from-blue-600 to-cyan-400 z-10" 
+                style={{ width: `${progress}%` }} 
+              />
+              <div className="absolute inset-0 bg-white/5" />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={togglePlay}
+                  className="w-10 h-10 rounded-xl bg-white text-slate-900 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+                >
+                  {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} className="ml-0.5" fill="currentColor" />}
+                </button>
+                
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/5">
+                  <span className="text-xs font-black text-white">{formatTime(videoRef.current?.currentTime || 0)}</span>
+                  <span className="text-xs font-bold text-white/30">/</span>
+                  <span className="text-xs font-bold text-white/50">{formatTime(duration)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 group/vol">
+                  <Volume2 size={18} className="text-white/50 group-hover/vol:text-white transition-colors" />
+                  <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-white/40 w-[80%]" />
+                  </div>
+                </div>
+                <button className="text-white/50 hover:text-white transition-colors">
+                  <Settings size={18} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Center Play Button (Large Overlay) */}
+      <AnimatePresence>
+        {!isPlaying && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.1 }}
+            onClick={togglePlay}
+            className="absolute inset-0 m-auto w-20 h-20 rounded-full bg-blue-600/90 text-white flex items-center justify-center shadow-2xl shadow-blue-500/40 backdrop-blur-sm z-10 border border-white/20"
+          >
+            <Play size={40} className="ml-1.5" fill="currentColor" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const ActiveModuleView = ({ module, onBack, onQuizComplete }) => {
   const [activeTab, setActiveTab] = useState('summary');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -798,14 +964,7 @@ const ActiveModuleView = ({ module, onBack, onQuizComplete }) => {
         {/* Left: Media & Content */}
         <div className="lg:col-span-2 space-y-6">
             <div className="aspect-video bg-black rounded-[2.5rem] overflow-hidden shadow-2xl relative border border-border-primary">
-            {module.videoUrl ? (
-                    <video src={module.videoUrl} controls className="w-full h-full" />
-                ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-white space-y-4 bg-gradient-to-br from-slate-900 to-slate-800">
-                        <Volume2 size={48} className="opacity-50" />
-                        <p className="font-bold opacity-70 italic tracking-widest uppercase text-xs text-center px-10 leading-relaxed max-w-md">Audio Analysis Session - Core Intelligence Pipeline</p>
-                    </div>
-                )}
+            <VideoPlayer src={module.videoUrl} poster={module.thumb} />
             </div>
 
             <div className="bg-bg-secondary rounded-[2.5rem] p-8 border border-border-primary space-y-6 shadow-sm">

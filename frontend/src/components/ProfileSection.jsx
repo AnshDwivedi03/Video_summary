@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { User, Award, BookOpen, Clock, ChevronRight, FileText, CheckCircle2, History } from "lucide-react";
+import { User, Award, BookOpen, Clock, ChevronRight, FileText, CheckCircle2, History, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const ProfileSection = ({ user, records = [], modules = [], onClose }) => {
+const ProfileSection = ({ user, records = [], modules = [] }) => {
   // Combine records with their module data
   const learningHistory = records.map(record => {
     const module = modules.find(m => m._id === record.moduleId || m.id === record.moduleId);
@@ -17,30 +17,9 @@ const ProfileSection = ({ user, records = [], modules = [], onClose }) => {
   const modulesCompleted = learningHistory.length;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8">
-      {/* Backdrop */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-bg-primary/80 backdrop-blur-xl"
-      />
-
-      {/* Profile Window */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative w-full max-w-5xl h-full max-h-[85vh] bg-bg-secondary rounded-[3rem] border border-border-primary shadow-2xl overflow-hidden flex flex-col"
-      >
-        {/* Close Button */}
-        <button 
-          onClick={onClose}
-          className="absolute top-8 right-8 w-10 h-10 rounded-full bg-bg-primary border border-border-primary flex items-center justify-center text-text-secondary hover:text-emerald-500 hover:border-emerald-500/30 transition-all z-10"
-        >
-          <X size={20} />
-        </button>
+    <div className="w-full h-fit flex flex-col space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Profile Window - Refactored to be a page component */}
+      <div className="relative w-full bg-bg-secondary rounded-[3rem] border border-border-primary shadow-sm overflow-hidden flex flex-col">
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {/* Top Section: User & Stats */}
@@ -129,7 +108,7 @@ const ProfileSection = ({ user, records = [], modules = [], onClose }) => {
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };
