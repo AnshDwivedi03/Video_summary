@@ -213,15 +213,23 @@ router.post("/", upload.single("video"), async (req, res) => {
       status: "queued",
     });
   } catch (err) {
-    console.error("upload-convert error:", err.response?.data || err.message);
+    const errorMsg = err.response?.data || err.message;
+    console.error("[uploadConvert] CRITICAL ERROR:", errorMsg);
+    
     fs.unlink(localVideoPath, () => {});
-
-    if (err.message === "NO_AUDIO_STREAM") {
-      return res.status(400).json({ message: "The uploaded video does not contain an audio track." });
-    }
-
-    res.status(500).json({ message: "Processing failed" });
-  }
+ 
+     if (err.message === "NO_AUDIO_STREAM") {
+       return res.status(400).json({ 
+         message: "The uploaded video does not contain an audio track.",
+         details: "FFmpeg could not find a valid audio stream to convert to MP3."
+       });
+     }
+ 
+     res.status(500).json({ 
+       message: "Processing failed", 
+       details: typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg)
+     });
+   }
 });
 
 // POST /api/upload-convert/cache — save processed results to cache

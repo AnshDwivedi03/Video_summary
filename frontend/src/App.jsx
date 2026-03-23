@@ -30,6 +30,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 400) {
+      console.error("--- API 400 Error Details ---");
+      console.error("URL:", error.config.url);
+      console.error("Data:", error.response.data);
+      console.error("-----------------------------");
+    }
+    return Promise.reject(error);
+  }
+);
+
 // --- Main App Component ---
 function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -42,7 +55,7 @@ function App() {
   const [processingTarget, setProcessingTarget] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [showHome, setShowHome] = useState(false);
+  const [showHome, setShowHome] = useState(true);
   const [showAccountPopover, setShowAccountPopover] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
