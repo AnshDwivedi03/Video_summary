@@ -5,7 +5,8 @@ import {
   Settings, LogOut, ChevronRight, PlayCircle,
   FileAudio, Zap, CheckCircle2, Brain, Sparkles,
   AlertCircle, Check, Play, Pause, Volume2, X,
-  ChevronLeft, FileText, Search, Menu, Clock, User, History
+  ChevronLeft, FileText, Search, Menu, Clock, User, History,
+  Moon, Sun, Shield, Key
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,9 +17,18 @@ import OnboardingSection from "./components/OnboardingSection";
 import ScoreTable from "./components/ScoreTable";
 import RoleSelector from "./components/RoleSelector";
 import ProfileSection from "./components/ProfileSection";
+import AuthPage from "./components/AuthPage";
 import { useTheme } from "./components/ThemeContext";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+// Axios interceptor for JWT
+const api = axios.create({ baseURL: API_URL });
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
 // --- Main App Component ---
 function App() {
@@ -26,19 +36,103 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [modules, setModules] = useState([]);
   const [records, setRecords] = useState([]);
-  const [user, setUser] = useState({ name: "Ansh Dwivedi" });
-
-  useEffect(() => {
-    // Fetch user records on load
-    axios.get(`${API_URL}/api/records/${user.name}`)
-      .then(res => setRecords(res.data))
-      .catch(err => console.error("Failed to fetch records:", err));
-  }, [user.name]);
+  const [user, setUser] = useState(null);
+  const [authScreen, setAuthScreen] = useState(null); // null, "login", "register"
+  const [selectedRole, setSelectedRole] = useState(null);
   const [processingTarget, setProcessingTarget] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
-  const [userRole, setUserRole] = useState(null); // fresher, experienced
+  const [authLoading, setAuthLoading] = useState(true);
+  const [showHome, setShowHome] = useState(false);
 
   const { isDarkMode } = useTheme();
+
+  // Auto-login on mount
+  useEffect(() => {
+    const tryAutoLogin = async () => {
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+      if (token && storedUser) {
+        try {
+          const res = await api.get("/api/auth/me");
+          const userData = res.data.user;
+          setUser(userData);
+          localStorage.setItem("user", JSON.stringify(userData));
+        } catch {
+          // Token invalid — clear
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
+      }
+      setAuthLoading(false);
+    };
+
+    const fetchDemoAccount = async (role = "sde2") => {
+      try {
+        const res = await api.get(`/api/auth/demo?role=${role}`);
+        setUser(res.data.user);
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        setAuthScreen(null);
+        setShowHome(false);
+      } catch (err) {
+        console.error("Failed to fetch demo account:", err);
+      }
+    };
+
+    tryAutoLogin();
+  }, []);
+
+  // Fetch records when user logs in
+  useEffect(() => {
+    if (user) {
+      api.get("/api/records")
+        .then(res => setRecords(res.data))
+        .catch(err => console.error("Failed to fetch records:", err));
+    }
+  }, [user]);
+
+  const handleAuthSuccess = (userData) => {
+    setUser(userData);
+    setAuthScreen(null);
+    setShowHome(false);
+    setSelectedRole(userData.role);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+    setRecords([]);
+    setModules([]);
+    setSelectedModule(null);
+    setSelectedRole(null);
+    setActiveTab("dashboard");
+    setAuthScreen(null);
+    setShowHome(true);
+  };
+
+  const handleRoleSelect = async (roleId) => {
+    // If guest, log in as demo
+    if (!user || user.email.includes("demo")) {
+      try {
+        const res = await api.get(`/api/auth/demo?role=${roleId}`);
+        setUser(res.data.user);
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        setShowHome(false);
+        setSelectedRole(roleId);
+      } catch (err) {
+        console.error("Demo login failed:", err);
+        // Fallback to register if demo fails
+        setSelectedRole(roleId);
+        setAuthScreen("register");
+      }
+    } else {
+      // Real user just switches view (though normally they'd stick to their role)
+      setSelectedRole(roleId);
+      setShowHome(false);
+    }
+  };
 
   const handleProcessStart = (target) => {
     setProcessingTarget(target);
@@ -51,27 +145,68 @@ function App() {
     setSelectedModule(newModule);
   };
 
-  if (!userRole) {
+  // Loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+        <div className="w-8 h-8 border-3 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Auth screens
+  if (authScreen === "login") {
+    return (
+      <div className="min-h-screen bg-bg-primary transition-colors duration-300">
+        <Navbar user={null} searchQuery="" setSearchQuery={() => {}} onSignInClick={() => {}} />
+        <AuthPage
+          mode="login"
+          onAuthSuccess={handleAuthSuccess}
+          onBack={() => setAuthScreen(null)}
+        />
+      </div>
+    );
+  }
+
+  if (authScreen === "register" && selectedRole) {
+    return (
+      <div className="min-h-screen bg-bg-primary transition-colors duration-300">
+        <Navbar user={null} searchQuery="" setSearchQuery={() => {}} onSignInClick={() => setAuthScreen("login")} />
+        <AuthPage
+          mode="register"
+          selectedRole={selectedRole}
+          onAuthSuccess={handleAuthSuccess}
+          onBack={() => { setAuthScreen(null); setSelectedRole(null); }}
+        />
+      </div>
+    );
+  }
+
+  // Not logged in or Home explicitly requested
+  if (!user || showHome) {
     return (
       <div className="min-h-screen bg-bg-primary transition-colors duration-300">
         <Navbar 
           user={user} 
           searchQuery={searchQuery} 
           setSearchQuery={setSearchQuery} 
-          onSignInClick={() => console.log("Sign in")} 
+          onSignInClick={() => setAuthScreen("login")} 
+          onHomeClick={() => setShowHome(true)}
         />
-        <RoleSelector onSelectRole={setUserRole} />
+        <RoleSelector onSelectRole={handleRoleSelect} />
       </div>
     );
   }
 
+  // Logged in — main dashboard
   return (
     <div className={`min-h-screen bg-bg-primary text-text-primary flex flex-col transition-colors duration-300`}>
       <Navbar 
         user={user} 
         searchQuery={searchQuery} 
         setSearchQuery={setSearchQuery} 
-        onSignInClick={() => console.log("Sign in")} 
+        onSignInClick={() => {}} 
+        onHomeClick={() => setShowHome(true)}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -111,8 +246,17 @@ function App() {
 
           <div className="pt-8 space-y-2 border-t border-border-primary">
             <p className="px-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">Account</p>
-            <SidebarItem icon={<Settings size={20} />} label="Settings" />
-            <SidebarItem icon={<LogOut size={20} />} label="Logout" />
+            <SidebarItem 
+              icon={<Settings size={20} />} 
+              label="Settings" 
+              active={activeTab === "settings"}
+              onClick={() => { setActiveTab("settings"); setSelectedModule(null); }}
+            />
+            <SidebarItem 
+              icon={<LogOut size={20} />} 
+              label="Logout" 
+              onClick={handleLogout}
+            />
           </div>
 
           <div className="mt-auto p-5 rounded-3xl bg-gradient-to-br from-blue-600/10 to-violet-600/10 border border-blue-500/20">
@@ -145,7 +289,6 @@ function App() {
                     onQuizComplete={async (score, total) => {
                       const isPass = (score / total) >= 0.6 && score > 0;
                       const payload = {
-                        userId: user.name,
                         moduleId: selectedModule.id,
                         videoTitle: selectedModule.title,
                         score,
@@ -153,14 +296,11 @@ function App() {
                         status: score === total ? "Perfect" : isPass ? "Passed" : "Failed"
                       };
                       
-                      // Optimistic UI update
-                      const optimisticRecord = { ...payload, id: Date.now(), date: new Date().toISOString().split('T')[0] };
+                      const optimisticRecord = { ...payload, _id: Date.now(), date: new Date().toISOString().split('T')[0] };
                       setRecords(prev => [optimisticRecord, ...prev]);
 
                       try {
-                        await axios.post(`${API_URL}/api/records`, payload);
-                        // Optional: refetch or update with real DB ID if needed, 
-                        // but the optimistic update works nicely for the demo.
+                        await api.post("/api/records", payload);
                       } catch (err) {
                         console.error("Failed to save record to DB:", err);
                       }
@@ -179,7 +319,7 @@ function App() {
                   <>
                     <div className="space-y-2 border-l-4 border-blue-600 pl-6 py-2">
                         <h2 className="text-3xl font-black tracking-tight">Your Career Growth</h2>
-                        <p className="text-text-secondary font-medium">Personalized training for your role as an <span className="text-blue-600 capitalize font-bold">{userRole}</span>.</p>
+                        <p className="text-text-secondary font-medium">Personalized training for your role as an <span className="text-blue-600 capitalize font-bold">{selectedRole}</span>.</p>
                     </div>
                     <ModernVideoInput onProcessStart={handleProcessStart} />
                     {processingTarget && (
@@ -208,7 +348,7 @@ function App() {
 
                 {activeTab === "onboarding" && (
                   <OnboardingSection 
-                    role={userRole}
+                    role={selectedRole}
                     modules={modules.filter(m => m.isOnboarding)} 
                     onSelectModule={setSelectedModule} 
                   />
@@ -221,6 +361,10 @@ function App() {
                     modules={modules}
                   />
                 )}
+
+                {activeTab === "settings" && (
+                  <SettingsPanel user={user} />
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -229,6 +373,60 @@ function App() {
     </div>
   );
 }
+
+// --- Settings Panel ---
+const SettingsPanel = ({ user }) => {
+  const { isDarkMode, toggleTheme } = useTheme();
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-8">
+      <div className="space-y-2 border-l-4 border-blue-600 pl-6 py-2">
+        <h2 className="text-3xl font-black tracking-tight">Settings</h2>
+        <p className="text-text-secondary font-medium">Manage your account and preferences.</p>
+      </div>
+
+      {/* Account Info */}
+      <div className="bg-bg-secondary rounded-[2.5rem] border border-border-primary p-8 space-y-6 shadow-sm">
+        <h3 className="text-xl font-bold flex items-center gap-3">
+          <Shield size={20} className="text-blue-600" /> Account Information
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Name</label>
+            <p className="text-lg font-bold">{user.name}</p>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Email</label>
+            <p className="text-lg font-bold">{user.email}</p>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">Role</label>
+            <p className="text-lg font-bold capitalize">{user.role}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Appearance */}
+      <div className="bg-bg-secondary rounded-[2.5rem] border border-border-primary p-8 space-y-6 shadow-sm">
+        <h3 className="text-xl font-bold flex items-center gap-3">
+          {isDarkMode ? <Moon size={20} className="text-blue-600" /> : <Sun size={20} className="text-blue-600" />} Appearance
+        </h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-bold">Dark Mode</p>
+            <p className="text-sm text-text-secondary">Toggle between light and dark themes</p>
+          </div>
+          <button
+            onClick={toggleTheme}
+            className={`w-14 h-8 rounded-full transition-colors relative ${isDarkMode ? "bg-blue-600" : "bg-border-primary"}`}
+          >
+            <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-all shadow-sm ${isDarkMode ? "left-7" : "left-1"}`} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const SidebarItem = ({ icon, label, active, onClick }) => (
   <button
@@ -299,7 +497,6 @@ const DashboardGrid = ({ title = "Your Learning Modules", modules, onSelectModul
 
 const ProcessPipeline = ({ target, onComplete }) => {
   const [step, setStep] = useState(0);
-  const [displayProgress, setDisplayProgress] = useState(0);
   const [error, setError] = useState(null);
   const [liveTranscripts, setLiveTranscripts] = useState([]);
 
@@ -313,21 +510,44 @@ const ProcessPipeline = ({ target, onComplete }) => {
           const formData = new FormData();
           formData.append("video", target.file);
           formData.append("fullLength", target.fullLength);
-          uploadPromise = axios.post(`${API_URL}/api/upload-convert`, formData, {
+          uploadPromise = api.post("/api/upload-convert", formData, {
             headers: { "Content-Type": "multipart/form-data" },
           });
         }
 
         const uploadRes = await uploadPromise;
+
+        // Check if cached
+        if (uploadRes.data.cached) {
+          setStep(4);
+          onComplete({
+            id: Date.now(),
+            title: target.file ? target.file.name : target.url,
+            department: "AI Analysis",
+            duration: "Processed",
+            status: "Completed",
+            progress: 100,
+            thumb: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800",
+            transcript: uploadRes.data.transcript.map((text, i) => ({ time: "00:00", text: typeof text === 'string' ? text : text.text })),
+            summary: uploadRes.data.summary || [],
+            quiz: uploadRes.data.quiz || [],
+            audioUrl: uploadRes.data.cloudinaryUrl,
+            videoUrl: uploadRes.data.videoUrl || uploadRes.data.cloudinaryUrl
+          });
+          return;
+        }
+
         const chunks = uploadRes.data.chunks;
         const fullCloudinaryUrl = uploadRes.data.cloudinaryUrl;
+        const videoCloudinaryUrl = uploadRes.data.videoUrl;
+        const fileHash = uploadRes.data.fileHash;
 
         setStep(1);
         setLiveTranscripts(new Array(chunks.length).fill(null));
         let chunkTranscripts = new Array(chunks.length).fill("");
 
         const processChunkWithGroq = async (chunk, idx) => {
-          const res = await axios.post(`${API_URL}/api/groq-transcript`, { filename: chunk.filename });
+          const res = await api.post("/api/groq-transcript", { filename: chunk.filename });
           chunkTranscripts[idx] = res.data.text;
           setLiveTranscripts(prev => {
             const updated = [...prev];
@@ -341,12 +561,27 @@ const ProcessPipeline = ({ target, onComplete }) => {
         }
 
         setStep(2);
-        const summaryQuizRes = await axios.post(`${API_URL}/api/quiz/summary-and-quiz`, {
+        const summaryQuizRes = await api.post("/api/quiz/summary-and-quiz", {
           transcript: chunkTranscripts.join(" "),
         });
 
         const { summary, quiz } = summaryQuizRes.data;
         setStep(4);
+
+        // Save to cache in background
+        try {
+          await api.post("/api/upload-convert/cache", {
+            fileHash,
+            fileName: target.file ? target.file.name : target.url,
+            transcript: chunkTranscripts,
+            summary: summary || [],
+            quiz: quiz || [],
+            audioUrl: fullCloudinaryUrl,
+            videoUrl: videoCloudinaryUrl,
+          });
+        } catch (cacheErr) {
+          console.error("Cache save failed:", cacheErr);
+        }
 
         onComplete({
           id: Date.now(),
@@ -359,7 +594,8 @@ const ProcessPipeline = ({ target, onComplete }) => {
           transcript: chunkTranscripts.map((text, i) => ({ time: "00:00", text })),
           summary: summary || [],
           quiz: quiz || [],
-          audioUrl: fullCloudinaryUrl
+          audioUrl: fullCloudinaryUrl,
+          videoUrl: videoCloudinaryUrl
         });
 
       } catch (err) {
@@ -444,25 +680,26 @@ const ActiveModuleView = ({ module, onBack, onQuizComplete }) => {
   };
 
   const handleAnswer = (optionIdx) => {
-    setQuizAnswers(prev => ({ ...prev, [currentQuestionIndex]: optionIdx }));
+    const nextAnswers = { ...quizAnswers, [currentQuestionIndex]: optionIdx };
+    setQuizAnswers(nextAnswers);
     setTimeout(() => {
-      handleNextQuestion();
+      handleNextQuestion(nextAnswers);
     }, 300);
   };
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = (latestAnswers = quizAnswers) => {
     if (currentQuestionIndex < module.quiz.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
       setTimeLeft(30);
     } else {
       setQuizSubmitted(true);
-      const finalScore = calculateScore();
+      const finalScore = calculateScore(latestAnswers);
       onQuizComplete(finalScore, module.quiz.length);
     }
   };
 
-  const calculateScore = () => {
-    return module.quiz.reduce((acc, q, idx) => acc + (quizAnswers[idx] === q.answer ? 1 : 0), 0);
+  const calculateScore = (answers = quizAnswers) => {
+    return module.quiz.reduce((acc, q, idx) => acc + (answers[idx] === q.answer ? 1 : 0), 0);
   };
 
   const score = calculateScore();
@@ -479,8 +716,8 @@ const ActiveModuleView = ({ module, onBack, onQuizComplete }) => {
         {/* Left: Media & Content */}
         <div className="lg:col-span-2 space-y-6">
             <div className="aspect-video bg-black rounded-[2.5rem] overflow-hidden shadow-2xl relative border border-border-primary">
-                {module.audioUrl ? (
-                    <video src={module.audioUrl} controls className="w-full h-full" />
+            {module.videoUrl ? (
+                    <video src={module.videoUrl} controls className="w-full h-full" />
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-white space-y-4 bg-gradient-to-br from-slate-900 to-slate-800">
                         <Volume2 size={48} className="opacity-50" />
@@ -537,7 +774,6 @@ const ActiveModuleView = ({ module, onBack, onQuizComplete }) => {
                                 </div>
                             ) : quizSubmitted ? (
                                 <div className="relative p-10 rounded-[3rem] bg-slate-900 overflow-hidden shadow-2xl border border-white/10 group">
-                                    {/* Aura Glow Background */}
                                     <div className={`absolute -top-24 -left-24 w-64 h-64 rounded-full blur-[100px] opacity-20 transition-colors duration-1000 ${isPass ? 'bg-emerald-500' : 'bg-red-500'}`} />
                                     <div className={`absolute -bottom-24 -right-24 w-64 h-64 rounded-full blur-[100px] opacity-20 transition-colors duration-1000 ${isPass ? 'bg-blue-500' : 'bg-rose-500'}`} />
                                     
@@ -619,7 +855,6 @@ const ActiveModuleView = ({ module, onBack, onQuizComplete }) => {
                                 </div>
                             ) : (
                                 <div className="space-y-8 relative">
-                                    {/* Timer Bar */}
                                     <div className="w-full h-2 bg-bg-primary rounded-full overflow-hidden">
                                         <motion.div 
                                             className={`h-full ${timeLeft < 10 ? 'bg-red-500' : 'bg-blue-600'}`}

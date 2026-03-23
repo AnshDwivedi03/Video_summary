@@ -3,20 +3,21 @@ const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegStatic = require("ffmpeg-static");
 const ffprobeInstaller = require("@ffprobe-installer/ffprobe");
 const axios = require("axios");
 const cloudinary = require("cloudinary").v2;
+const VideoCache = require("../models/VideoCache");
 
 // ffmpeg-static can return null on some Linux/production environments.
-// Fall back to the system-installed ffmpeg binary in that case.
 const ffmpegPath = ffmpegStatic || "ffmpeg";
 console.log("[uploadConvert] ffmpeg path:", ffmpegPath);
 ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobeInstaller.path);
 
-// Ensure required directories exist at startup (Render ephemeral FS)
+// Ensure required directories exist
 const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
 const OUTPUT_DIR = path.join(__dirname, "..", "output");
 [UPLOADS_DIR, OUTPUT_DIR].forEach((dir) => {
@@ -37,17 +38,23 @@ const upload = multer({
   dest: UPLOADS_DIR,
 });
 
+// Compute SHA-256 hash of a file
+function computeFileHash(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash("sha256");
+    const stream = fs.createReadStream(filePath);
+    stream.on("data", (data) => hash.update(data));
+    stream.on("end", () => resolve(hash.digest("hex")));
+    stream.on("error", reject);
+  });
+}
+
 // MP4 → MP3
 function convertMp4ToMp3(inputPath, startTime, duration) {
   return new Promise((resolve, reject) => {
-    const outDir = OUTPUT_DIR;
-
     const outputPath = path.join(
-      outDir,
-      `audio-${Date.now()}-${path.basename(
-        inputPath,
-        path.extname(inputPath)
-      )}.mp3`
+      OUTPUT_DIR,
+      `audio-${Date.now()}-${path.basename(inputPath, path.extname(inputPath))}.mp3`
     );
 
     let command = ffmpeg(inputPath).noVideo().audioCodec("libmp3lame").format("mp3");
@@ -68,9 +75,7 @@ function convertMp4ToMp3(inputPath, startTime, duration) {
           reject(err);
         }
       })
-      .on("end", () => {
-        resolve(outputPath);
-      })
+      .on("end", () => resolve(outputPath))
       .save(outputPath);
   });
 }
@@ -92,8 +97,6 @@ function getAudioDuration(filePath) {
 // Helper: Split audio into overlapping chunks
 function splitAudio(inputPath, duration, chunkDur = 180, overlap = 15) {
   const chunks = [];
-  const outDir = OUTPUT_DIR;
-
   let start = 0;
   let index = 0;
   while (start < duration) {
@@ -105,11 +108,11 @@ function splitAudio(inputPath, duration, chunkDur = 180, overlap = 15) {
   }
 
   const promises = chunks.map(chunk => new Promise((resolve, reject) => {
-    const outputPath = path.join(outDir, `chunk-${Date.now()}-${chunk.index}.mp3`);
+    const outputPath = path.join(OUTPUT_DIR, `chunk-${Date.now()}-${chunk.index}.mp3`);
     ffmpeg(inputPath)
       .setStartTime(chunk.start)
       .setDuration(chunk.end - chunk.start)
-      .audioCodec("libmp3lame") 
+      .audioCodec("libmp3lame")
       .on("error", (err) => {
         console.error("FFmpeg split error:", err);
         reject(err);
@@ -121,22 +124,13 @@ function splitAudio(inputPath, duration, chunkDur = 180, overlap = 15) {
   return Promise.all(promises);
 }
 
-// Upload MP3 to Cloudinary → public https URL
+// Upload MP3 to Cloudinary
 async function uploadToCloudinary(localMp3Path) {
   const res = await cloudinary.uploader.upload(localMp3Path, {
     resource_type: "video",
     folder: "video_summary_audio",
   });
   return res.secure_url;
-}
-
-// Call your AssemblyAI wrapper route
-async function createAssemblyJob(audioUrl) {
-  const res = await axios.post(
-    "http://localhost:5000/api/assembly-transcript",
-    { audioUrl }
-  );
-  return res.data.id;
 }
 
 // POST /api/upload-convert
@@ -146,70 +140,106 @@ router.post("/", upload.single("video"), async (req, res) => {
   }
 
   const localVideoPath = req.file.path;
-
-  const fullLength = req.body.fullLength === "true";
-  const startTime = parseInt(req.body.startTime) || 0;
-  const endTime = parseInt(req.body.endTime) || 0;
-  let duration = 0;
-
-  if (!fullLength && endTime > startTime) {
-    duration = endTime - startTime;
-  }
-
-  let mp4_to_mp3_done = false;
-  let uploaded_to_cloudinary = false;
-  let assembly_job_created = false;
+  const originalFileName = req.file.originalname || "unknown";
 
   try {
-    // 1) MP4 → MP3
+    // 1) Compute file hash for caching
+    const fileHash = await computeFileHash(localVideoPath);
+
+    // 2) Check cache
+    const cached = await VideoCache.findOne({ fileHash });
+    if (cached) {
+      // Clean up uploaded file
+      fs.unlink(localVideoPath, () => {});
+      console.log("[uploadConvert] Cache hit for:", originalFileName);
+      return res.json({
+        cached: true,
+        transcript: cached.transcript,
+        summary: cached.summary,
+        quiz: cached.quiz,
+        cloudinaryUrl: cached.audioUrl,
+        videoUrl: cached.videoUrl || cached.audioUrl,
+        file: null,
+        chunks: [],
+        status: "cached",
+      });
+    }
+
+    // 3) Cache miss — proceed with normal pipeline
+    const fullLength = req.body.fullLength === "true";
+    const startTime = parseInt(req.body.startTime) || 0;
+    const endTime = parseInt(req.body.endTime) || 0;
+    let duration = 0;
+
+    if (!fullLength && endTime > startTime) {
+      duration = endTime - startTime;
+    }
+
+    // Upload original video to Cloudinary for playback
+    const videoCloudinaryUrl = await cloudinary.uploader.upload(localVideoPath, {
+      resource_type: "video",
+      folder: "video_summary_videos",
+    }).then(r => r.secure_url);
+
+    // MP4 → MP3
     const mp3LocalPath = await convertMp4ToMp3(localVideoPath, !fullLength ? startTime : null, duration);
-    mp4_to_mp3_done = true;
 
-    // 2) Upload FULL MP3 to Cloudinary for frontend playback
+    // Upload FULL MP3 to Cloudinary
     const fullCloudinaryUrl = await uploadToCloudinary(mp3LocalPath);
-    uploaded_to_cloudinary = true;
 
-    // 3) Split MP3 into optimized overlapping chunks (3 min chunk, 15 sec overlap)
+    // Split MP3 into chunks
     const mp3Duration = await getAudioDuration(mp3LocalPath);
     const localChunks = await splitAudio(mp3LocalPath, mp3Duration, 180, 15);
 
-    // 4) Return local chunks for Groq processing
     const chunkResults = localChunks.map(chunk => ({
       chunkIndex: chunk.index,
       start: chunk.start,
       end: chunk.end,
       filename: path.basename(chunk.path),
     }));
-    
-    // assembly_job_created is no longer strictly AssemblyAI, but we'll leave it as true for compatibility, or just true since transcript jobs exist.
-    assembly_job_created = true;
 
-    // optional: still expose local MP3 for download
     const fileName = path.basename(mp3LocalPath);
     const publicMp3Path = `/output/${fileName}`;
 
-    fs.unlink(localVideoPath, () => { });
+    fs.unlink(localVideoPath, () => {});
 
     res.json({
+      cached: false,
+      fileHash,
       file: publicMp3Path,
-      cloudinaryUrl: fullCloudinaryUrl, // Pass FULL to frontend for playback
-      chunks: chunkResults,             // Array of chunk metadata and IDs
+      cloudinaryUrl: fullCloudinaryUrl,
+      videoUrl: videoCloudinaryUrl,
+      chunks: chunkResults,
       status: "queued",
-      mp4_to_mp3_done,
-      uploaded_to_cloudinary,
-      assembly_job_created,
     });
   } catch (err) {
     console.error("upload-convert error:", err.response?.data || err.message);
-
-    // Clean up local temp file on error as well
-    fs.unlink(localVideoPath, () => { });
+    fs.unlink(localVideoPath, () => {});
 
     if (err.message === "NO_AUDIO_STREAM") {
-      return res.status(400).json({ message: "The uploaded video does not contain an audio track. Please upload a video with audio." });
+      return res.status(400).json({ message: "The uploaded video does not contain an audio track." });
     }
 
     res.status(500).json({ message: "Processing failed" });
+  }
+});
+
+// POST /api/upload-convert/cache — save processed results to cache
+router.post("/cache", async (req, res) => {
+  try {
+    const { fileHash, fileName, transcript, summary, quiz, audioUrl, videoUrl } = req.body;
+    if (!fileHash) return res.status(400).json({ message: "fileHash required" });
+
+    await VideoCache.findOneAndUpdate(
+      { fileHash },
+      { fileHash, fileName, transcript, summary, quiz, audioUrl, videoUrl },
+      { upsert: true, new: true }
+    );
+
+    res.json({ message: "Cached successfully" });
+  } catch (err) {
+    console.error("Cache save error:", err);
+    res.status(500).json({ message: "Failed to cache results" });
   }
 });
 
