@@ -72,6 +72,7 @@ function App() {
           const userData = res.data.user;
           setUser(userData);
           localStorage.setItem("user", JSON.stringify(userData));
+          setShowHome(false);
         } catch {
           // Token invalid — clear
           localStorage.removeItem("token");
@@ -163,14 +164,6 @@ function App() {
     setSelectedModule(newModule);
   };
 
-  // Loading state
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
-        <div className="w-8 h-8 border-3 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   // Auth screens
   if (authScreen === "login") {
