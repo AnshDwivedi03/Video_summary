@@ -2,6 +2,7 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
+const axios = require("axios");
 const path = require("path");
 const cors = require("cors");
 
@@ -74,5 +75,21 @@ mongoose
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+
+  // Keep-alive logic (pings self every 14 minutes)
+  const selfUrl = process.env.RENDER_EXTERNAL_URL || process.env.SELF_URL;
+  if (selfUrl) {
+    console.log(`Keep-alive initialized for: ${selfUrl}`);
+    setInterval(async () => {
+      try {
+        await axios.get(selfUrl);
+        console.log(`[Keep-Alive] Self-ping successful at ${new Date().toISOString()}`);
+      } catch (err) {
+        console.error(`[Keep-Alive] Self-ping failed: ${err.message}`);
+      }
+    }, 14 * 60 * 1000); // 14 minutes
+  } else {
+    console.warn("Keep-alive skipped: No RENDER_EXTERNAL_URL or SELF_URL found in environment.");
+  }
 });
 
